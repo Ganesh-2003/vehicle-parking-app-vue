@@ -1,0 +1,37 @@
+{% extends "navbar.html" %}
+
+{% block content %}
+
+ <div class="title"> Parking Lots </div>
+
+<!-- Button at the bottom -->
+<div class="mt-auto p-3 text-center">
+  <button type="button" class="btn btn-outline-dark btn_add_lot" onclick="window.location.href='/admin/addlot'">
+    + Add Lot
+  </button>
+</div>
+<div class=" d-flex flex-row align-content-center justify-content-evenly" style="margin-left: 100;">
+  <!-- Main content -->
+  {% for lot in lots_data %}
+    <div class="parking_lot">
+      <h3>Parking #{{ lot.lot[0] }}</h3>
+      <h6> {{lot.lot[2]}} </h6>
+      <a href='/admin/edit?lot_id={{ lot.lot[0] }}'>Edit</a> | 
+      <a href="/admin/delete?lot_id={{ lot.lot[0] }}">Delete</a>
+      <p style="color: green;">(Occupied: {{ lot.occupied }}/{{ lot.total }})</p>
+
+      <div class="spot">
+        {% for spot in lot.spots %}
+          {% if spot[2] == 'O' %}
+            <div onclick="window.location.href='/admin/viewSpot?spot_id={{ spot[1] }}&lot_id={{ lot.lot[0] }}&status={{ spot[2] }}'" class="occupied">O</div>
+          {% else %}
+            <div onclick="window.location.href='/admin/viewSpot?spot_id={{ spot[1] }}&lot_id={{ lot.lot[0] }}&status={{ spot[2] }}'" class="available">A</div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+              
+</div>
+
+{% endblock %}
