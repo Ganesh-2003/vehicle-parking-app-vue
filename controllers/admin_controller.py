@@ -78,78 +78,101 @@ def admin_dashboard_api():
         "lots": all_parking_lots
     })
 
-@admin.route('/admin/addlot', methods = ['GET','POST'])
-def addlot():
 
-    if request.method == 'POST':
-        data = request.get_json()
-        locationName = data.get('locationName')
-        address = data.get('address')
-        pincode = data.get('pincode')
-        pricePerHour = data.get('pricePerHour')
-        maxSpots = data.get('maxSpots')
+@admin.route('/api/admin/lot/add', methods=['POST'])
+def add_lot_api():
 
-        if not locationName or not address or not pincode or not pricePerHour or not maxSpots:
-            flash("Please enter all the details", "error")
-            return redirect(url_for('admin.addlot'))
-        
-        else:
-            lot_id = insertParkingLot(locationName,address,pincode,pricePerHour,maxSpots)
-            maxSpots = int(maxSpots)
-            for i in range(1,maxSpots+1):
-                insertParkingSpots(lot_id, i)
+    data = request.get_json()
 
-            return jsonify({"status": "success", "message": "Parking Lot added successfully"}), 200
+    locationName = data.get('locationName')
+    address = data.get('address')
+    pincode = data.get('pincode')
+    pricePerHour = data.get('pricePerHour')
+    maxSpots = data.get('maxSpots')
+
+    # Validate fields
+    if not locationName or not address or not pincode or not pricePerHour or not maxSpots:
+        return jsonify({
+            "success": False,
+            "message": "Please enter all the details"
+        }), 400
+
+    # Insert lot
+    lot_id = insertParkingLot(locationName, address, pincode, pricePerHour, maxSpots)
+    maxSpots = int(maxSpots)
+
+    # Create parking spots
+    for i in range(1, maxSpots + 1):
+        insertParkingSpots(lot_id, i)
+
+    return jsonify({
+        "success": True,
+        "message": "Parking Lot added successfully",
+        "lot_id": lot_id
+    }), 200
             
     return render_template('admin/addlot.html')
 
-@admin.route('/admin/edit', methods=['GET', 'POST'])
-def editSpot():
-    
-    if request.method == 'POST':
-        data = request.get_json()
-        locationName = data.get('locationName')
-        address = data.get('address')
-        pincode = data.get('pincode')
-        pricePerHour = data.get('pricePerHour')
-        maxSpots = data.get('maxSpots')
-        lot_id = int(data.get('lot_id'))
-        print(data)
+@admin.route('/api/admin/lot/<int:lot_id>', methods=['GET'])
+def get_lot(lot_id):
+    parking_lot_data = fetch_parking_lot(lot_id)
 
-        if not locationName or not address or not pincode or not pricePerHour or not maxSpots:
-            return jsonify({"status": "error", "message": "Please enter all the details"}), 400
-        else:
-            updateParkinglot(locationName, address, pincode, pricePerHour, maxSpots,lot_id)
-            
-            return jsonify({"status": "success", "message": "Parking lot updated successfully"}), 200
-            
-    lot_id = request.args.get('lot_id', type=int)
-    print("Lot id : ", lot_id)
-    parkinglotdata = fetch_parking_lot(lot_id)
-    return render_template("admin/editParkinglot.html", parking_lot_data = parkinglotdata, lot_id = lot_id)
+    if not parking_lot_data:
+        return jsonify({"success": False, "message": "Lot not found"}), 404
+
+    return jsonify({
+        "success": True,
+        "lot": {
+            "lot_id": parking_lot_data[0],
+            "location_name": parking_lot_data[1],
+            "address": parking_lot_data[2],
+            "pincode": parking_lot_data[3],
+            "price": parking_lot_data[4],
+            "maxSpots": parking_lot_data[5]
+        }
+    }), 200
 
 
-@admin.route('/admin/delete', methods=['GET', 'POST'])
-def deletelot():
-    
-    lot_id = request.args.get('lot_id', type=int)
+@admin.route('/api/admin/lot/update', methods=['POST'])
+def update_lot():
+    data = request.get_json()
 
-    if not lot_id:
-        flash("Invalid or missing parking lot ID.", "error")
-        return redirect(url_for('admin.dashboard'))
+    required = ["locationName", "address", "pincode", "pricePerHour", "maxSpots", "lot_id"]
+    for r in required:
+        if not data.get(r):
+            return jsonify({"success": False, "message": f"Missing field: {r}"}), 400
+
+    updateParkinglot(
+        data["locationName"],
+        data["address"],
+        data["pincode"],
+        data["pricePerHour"],
+        data["maxSpots"],
+        int(data["lot_id"])
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Parking lot updated successfully"
+    }), 200
+
+
+@admin.route('/api/admin/lot/delete/<int:lot_id>', methods=['POST'])
+def api_delete_lot(lot_id):
 
     parkinglotdata = fetch_parking_lot(lot_id)
     if not parkinglotdata:
-        flash("Parking lot not found.", "error")
-        return redirect(url_for('admin.dashboard'))
+        return jsonify({
+            "success": False,
+            "message": "Parking lot not found"
+        }), 404
 
-    if request.method == 'POST':
-        deleteParkingLotAndSpot(lot_id) #Parking lot deletion and Parking Spot deletion as well in POST METHOD
+    deleteParkingLotAndSpot(lot_id)
 
-        flash("Parking lot deleted successfully.", "success")
-        return redirect(url_for('admin.dashboard'))
-
-    return render_template("admin/confirm_delete.html", parking_lot_data=parkinglotdata, lot_id=lot_id)
+    return jsonify({
+        "success": True,
+        "message": "Parking lot deleted successfully"
+    }), 200
 
 @admin.route('/admin/viewSpot', methods = ['GET','POST'])
 def viewSpot():

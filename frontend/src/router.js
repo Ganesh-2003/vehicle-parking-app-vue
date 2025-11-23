@@ -23,7 +23,23 @@ const routes = [
   {
     path: "/admin/dashboard",
     component: () => import("./views/admin/dashboard.vue")
+  },
+
+  {
+    path: "/admin/edit-lot/:lotId",
+    component: () => import("./views/admin/EditLot.vue")
+  },
+
+  {
+    path: "/admin/delete-lot/:lotId",
+    component: () => import("./views/admin/deleteLot.vue")
+  },
+
+  {
+    path: "/admin/add-lot",
+    component: () => import("./views/admin/addLot.vue")
   }
+
 ];
 
 const router = createRouter({
