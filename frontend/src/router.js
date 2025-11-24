@@ -38,7 +38,13 @@ const routes = [
   {
     path: "/admin/add-lot",
     component: () => import("./views/admin/addLot.vue")
+  },
+
+  {
+    path: "/admin/view-spot/:lotId/:spotId/:status",
+    component: () => import("./views/admin/viewSpot.vue")
   }
+
 
 ];
 

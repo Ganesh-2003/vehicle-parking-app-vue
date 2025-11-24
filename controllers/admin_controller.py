@@ -174,22 +174,44 @@ def api_delete_lot(lot_id):
         "message": "Parking lot deleted successfully"
     }), 200
 
-@admin.route('/admin/viewSpot', methods = ['GET','POST'])
-def viewSpot():
-    spot_id = request.args.get('spot_id',type = int)
-    lot_id = request.args.get('lot_id',type = int)
-    status = request.args.get('status',type = str)
-    print(status)
+@admin.route('/api/admin/spot/<int:lot_id>/<int:spot_id>/<string:status>', methods=['GET'])
+def api_view_spot(lot_id, spot_id, status):
 
     if spot_id is None or lot_id is None or status is None:
-        flash("Invalid Lot Id or Spot_id")
-        return redirect(url_for('admin.dashboard'))
+        return jsonify({
+            "success": False,
+            "message": "Invalid Lot ID or Spot ID"
+        }), 400
 
-    if request.method == 'POST':
-        deleteParticularParkingSpot(spot_id,lot_id)
-        return redirect(url_for('admin.dashboard'))
+    return jsonify({
+        "success": True,
+        "spot": {
+            "spot_id": spot_id,
+            "lot_id": lot_id,
+            "status": status
+        }
+    }), 200
 
-    return render_template("admin/viewSpot.html", spot_id = spot_id, lot_id = lot_id, status = status)
+@admin.route('/api/admin/spot/delete', methods=['POST'])
+def api_delete_spot():
+    data = request.get_json()
+
+    spot_id = data.get('spot_id')
+    lot_id = data.get('lot_id')
+
+    if not spot_id or not lot_id:
+        return jsonify({
+            "success": False,
+            "message": "Missing spot_id or lot_id"
+        }), 400
+
+    deleteParticularParkingSpot(spot_id, lot_id)
+
+    return jsonify({
+        "success": True,
+        "message": "Spot deleted successfully"
+    }), 200
+
 
 @admin.route('/admin/users', methods = ['GET','POST'])
 def viewUsers():

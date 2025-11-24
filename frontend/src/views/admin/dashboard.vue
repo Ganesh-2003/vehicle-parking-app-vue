@@ -76,8 +76,8 @@ export default {
     },
 
     goToSpot(lotId, spot) {
-      const spotId = spot[1];
-      const status = spot[2];
+      const spotId = spot.spot_id;
+      const status = spot.status;
       this.$router.push(`/admin/view-spot/${lotId}/${spotId}/${status}`);
     }
   }
