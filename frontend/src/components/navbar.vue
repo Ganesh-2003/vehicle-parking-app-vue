@@ -29,7 +29,7 @@
           </li>
 
           <li class="nav-item">
-            <RouterLink class="nav-link" to="/admin/summary">Summary</RouterLink>
+            <RouterLink class="nav-link" to="/summary">Summary</RouterLink>
           </li>
 
           <li class="nav-item">

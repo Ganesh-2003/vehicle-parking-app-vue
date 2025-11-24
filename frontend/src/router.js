@@ -51,7 +51,7 @@ const routes = [
   },
 
   {
-    path: "/admin/summary",
+    path: "/summary",
     component: () => import("./views/admin/adminSummary.vue")
   },
 

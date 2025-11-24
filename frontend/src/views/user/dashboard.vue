@@ -49,7 +49,7 @@
     <hr />
 
     <!-- Search Parking -->
-    <h3 class="mt-4">Available Parking Lots</h3>
+    <h3 style="font-weight: bold; align-items: center;" class="mt-4">Available Parking Lots</h3>
 
     <input
       v-model="filterText"
