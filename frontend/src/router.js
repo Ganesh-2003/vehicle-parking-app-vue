@@ -27,7 +27,7 @@ const routes = [
 
   {
     path: "/admin/edit-lot/:lotId",
-    component: () => import("./views/admin/EditLot.vue")
+    component: () => import("./views/admin/editLot.vue")
   },
 
   {
@@ -43,7 +43,41 @@ const routes = [
   {
     path: "/admin/view-spot/:lotId/:spotId/:status",
     component: () => import("./views/admin/viewSpot.vue")
+  },
+
+  {
+    path: "/admin/users",
+    component: () => import("./views/admin/users.vue")
+  },
+
+  {
+    path: "/admin/summary",
+    component: () => import("./views/admin/adminSummary.vue")
+  },
+
+  {
+    path: "/dashboard",
+    component: () => import("./views/user/dashboard.vue")
+  },
+
+  {
+    path: "/user/book/:lot_id/:location",
+    name: "BookSpot",
+    component: () => import("./views/user/bookSpot.vue")
+  },
+
+  {
+    path: "/user/add-vehicle",
+    name: "AddVehicle",
+    component: () => import("./views/user/addVehicle.vue")
+  },
+
+  {
+    path: "/user/release/:spot_id/:vehicle_number/:lot_id/:parking_time",
+    name: "ReleaseSpot",
+    component: () => import("./views/user/releaseSpot.vue")
   }
+
 
 
 ];

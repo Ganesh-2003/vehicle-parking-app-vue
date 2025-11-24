@@ -65,7 +65,7 @@
           </li>
 
           <li class="nav-item">
-            <RouterLink class="nav-link" to="/add-vehicle">Add Vehicle</RouterLink>
+            <RouterLink class="nav-link" to="/user/add-vehicle">Add Vehicle</RouterLink>
           </li>
 
           <li class="nav-item">
