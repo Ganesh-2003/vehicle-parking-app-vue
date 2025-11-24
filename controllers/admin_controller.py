@@ -111,7 +111,7 @@ def add_lot_api():
         "lot_id": lot_id
     }), 200
             
-    return render_template('admin/addlot.html')
+    #return render_template('admin/addlot.html')
 
 @admin.route('/api/admin/lot/<int:lot_id>', methods=['GET'])
 def get_lot(lot_id):
@@ -213,48 +213,57 @@ def api_delete_spot():
     }), 200
 
 
-@admin.route('/admin/users', methods = ['GET','POST'])
-def viewUsers():
-    
-    users_data = getUsersData()
+@admin.route('/api/admin/users', methods=['GET'])
+def api_users():
+    users = getUsersData()
 
-    return render_template("admin/userslist.html",users_data = users_data)
+    clean_users = []
+    for u in users:
+        clean_users.append({
+            "id": u[0],
+            "email": u[1],
+            "fullname": u[3],
+            "address": u[4],
+            "pincode": u[5]
+        })
 
-@admin.route("/admin/summary", methods = ['GET','POST'])
-def summary():
-    
+    return jsonify({
+        "success": True,
+        "users": clean_users
+    }), 200
+
+
+@admin.route('/api/admin/summary', methods=['GET'])
+def api_admin_summary():
     conn = sqlite3.connect(DATABASE_PARKING)
     cursor = conn.cursor()
 
-    cursor.execute('''
-                        Select count(*) from PARKINGLOT
-                   ''')
-    
+    # Total lots
+    cursor.execute("SELECT COUNT(*) FROM ParkingLot")
     total_lots = cursor.fetchone()[0]
 
-    cursor.execute('''
-                        Select count(*) from ParkingSpots
-                   ''')
-    
+    # Total spots
+    cursor.execute("SELECT COUNT(*) FROM ParkingSpots")
     total_spots = cursor.fetchone()[0]
 
+    # Count of spots by status
     cursor.execute("SELECT status, COUNT(*) FROM ParkingSpots GROUP BY status")
-
     status_data = cursor.fetchall()
-    status_summary = {status: count for status, count in status_data}
+    status_summary = {item[0]: item[1] for item in status_data}
 
-    cursor.execute("""
-        SELECT lot_id, COUNT(*) FROM ParkingSpots GROUP BY lot_id
-    """)
+    # Count of spots per lot
+    cursor.execute("SELECT lot_id, COUNT(*) FROM ParkingSpots GROUP BY lot_id")
     lot_spot_data = cursor.fetchall()
 
     conn.close()
 
-    return render_template("admin/adminSummary.html",
-                           total_lots = total_lots,
-                           total_spots = total_spots,
-                           status_summary = status_summary,
-                           lot_spot_data = lot_spot_data)
+    return jsonify({
+        "success": True,
+        "total_lots": total_lots,
+        "total_spots": total_spots,
+        "status_summary": status_summary,
+        "lot_spot_data": lot_spot_data
+    }), 200
 
 
 

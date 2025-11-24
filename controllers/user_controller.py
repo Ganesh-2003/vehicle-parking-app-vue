@@ -11,154 +11,195 @@ user = Blueprint('user',__name__)
 auth_ns = Namespace('auth', description='Authentication API')
 
 
-@user.route("/user/dashboard",methods = ['GET','POST'])
-def dashboard():
+@user.route('/api/user/dashboard', methods=['GET'])
+def user_dashboard_api():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Not authenticated"}), 401
 
-    user_id = session['user_id']
-    user_parking_data = getReserveParkingSpotData(user_id)
-  
-    availability_data = get_availability_data()
+    user_parking_data_tuples = getReserveParkingSpotData(user_id)
+    availability_data_tuples = get_availability_data()
 
-    print(user_parking_data)
-    print(availability_data)
-    
-    return render_template("dashboard/user_dashboard.html",availability_data=availability_data, user_parking_data = user_parking_data)
+    # Convert tuples → objects
+    user_parking_data = [{
+        "reserve_id": p[0],
+        "location": p[1],
+        "vehicle_number": p[2],
+        "parking_timestamp": p[3],
+        "status": p[4],
+        "lot_id": p[5]
+    } for p in user_parking_data_tuples]
 
-@user.route("/user/bookSpot", methods = ['GET','POST'])
-def bookSpot():
+    availability_data = [{
+        "lot_id": a[0],
+        "location": a[1],
+        "availability": a[2]
+    } for a in availability_data_tuples]
 
-    #POST METHOD 
-    if request.method == "POST":
-
-        lot_id = request.form.get('lot_id')
-        location_name = request.form.get('locationName')
-        spot_id = fetchOneParkingSpot(lot_id)
-        user_id = session['user_id']
-        vehicles_user = fetchVehicleUsers(user_id, 'F')
-
-        #used for processing vehicles list
-        print(vehicles_user)
-        vehicles_list = []
-        for vehicle in vehicles_user:
-            print(vehicle)
-            vehicles_list.append(vehicle[0])
-        
-        print(vehicles_list)
-
-        if not vehicles_user:
-            flash("You have no vehicles registered. Please add a vehicle before booking a spot.", "warning")
-            return redirect(url_for('user.addVehicle'))
-        
-        return render_template("user/book_Spot.html", 
-                               lot_id=lot_id, 
-                               spot_id=spot_id, 
-                               user_id=user_id, 
-                               location_name = location_name, 
-                               vehicles_user = vehicles_list
-                            )
+    return jsonify({
+        "success": True,
+        "user_parking_data": user_parking_data,
+        "availability_data": availability_data
+    })
 
 
-@user.route("/user/addVehicle", methods = ['GET', 'POST'])
-def addVehicle():
+@user.route("/api/user/bookSpot", methods=['POST'])
+def bookSpot_api():
+    data = request.get_json()
 
+    lot_id = data.get("lot_id")
+    location_name = data.get("locationName")
+
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    # get the next available spot
+    spot_id = fetchOneParkingSpot(lot_id)
+
+    # Fetch user's registered vehicles
+    vehicles_user = fetchVehicleUsers(user_id, 'F')
+
+    if not vehicles_user:
+        return jsonify({
+            "success": False,
+            "message": "No vehicles registered"
+        })
+
+    # Convert rows -> list of vehicle numbers
+    vehicles_list = [v[0] for v in vehicles_user]
+
+    return jsonify({
+        "success": True,
+        "lot_id": lot_id,
+        "spot_id": spot_id[0],
+        "user_id": user_id,
+        "location_name": location_name,
+        "vehicles": vehicles_list
+    })
+
+
+
+@user.route("/api/user/addVehicle", methods=['GET', 'POST'])
+def addVehicle_api():
+
+    # POST → Add a vehicle
     if request.method == 'POST':
         data = request.get_json()
-        user_id = session['user_id']
+
+        user_id = session.get('user_id')
         vehicle_number = data.get("vehicle_number")
 
         if not user_id or not vehicle_number:
-            return jsonify({"status": "error", "message": "Please enter all the details"})
-        
-        if (checkVehicleExists(vehicle_number)):
-            return jsonify({"status": "error", "message": "Vehicle Number Already Exists"})
-        
-        insertVehicleDetails(user_id, vehicle_number,'F')
-        return jsonify({"status": "success", "message": "Vehicle added successfully!"})
+            return jsonify({"success": False, "message": "Please enter all the details"})
 
-    #GET Request
-    user_id = session['user']
-    return render_template("user/add_vehicle.html", user_id = user_id)
+        if checkVehicleExists(vehicle_number):
+            return jsonify({"success": False, "message": "Vehicle Number Already Exists"})
 
-@user.route('/user/confirmBooking', methods = ['GET','POST'])
-def confirmBooking():
+        insertVehicleDetails(user_id, vehicle_number, 'F')
+        return jsonify({"success": True, "message": "Vehicle added successfully!"})
 
-    if request.method == 'POST':
-        data  = request.get_json()
-        locationName = data.get('locationName')
-        user_id = data.get('user_id')
-        lot_id = data.get('lot_id')
-        spot_id = data.get('spot_id')
-        vehicle_number = data.get('vehicle_number')
+    # GET → return logged-in user info
+    user_id = session.get('user_id')
+    return jsonify({
+        "success": True,
+        "user_id": user_id
+    })
+
+
+@user.route('/api/user/confirmBooking', methods=['POST'])
+def confirmBooking_api():
+
+    data = request.get_json()
+
+    user_id = session.get('user_id')    # Trust session ONLY
+    locationName = data.get('locationName')
+    lot_id = data.get('lot_id')
+    spot_id = data.get('spot_id')
+    vehicle_number = data.get('vehicle_number')
+
+    # Normalize
+    if vehicle_number:
         vehicle_number = vehicle_number.upper()
-        status = 'O'
-        user_id = session['user_id']
 
-        if not locationName or not user_id or not lot_id or not spot_id or not vehicle_number:
-            flash("Something went wrong","error")
-            return redirect(url_for('user.dashboard'))
-
-        else:
-            deleteReserveParkingSpot(user_id, vehicle_number)
-            insertReserveParkingSpot(spot_id, lot_id, user_id, vehicle_number)
-            updateParkingSpotStatus(spot_id,lot_id,status)
-            updateVehicleStatus(user_id, vehicle_number, 'P')
-        
+    # Validate input
+    if not (locationName and user_id and lot_id and spot_id and vehicle_number):
         return jsonify({
-            "status": "success",
-            "message": "Booking Successfull"
-        }),200
+            "success": False,
+            "message": "Missing required fields"
+        }), 400
 
-@user.route("/user/ReleaseSpot" , methods=['GET','POST'])
-def ReleaseSpot():
+    # --- Perform Booking ---
+    
+    # Remove existing reservation of same vehicle (if any)
+    deleteReserveParkingSpot(user_id, vehicle_number)
 
-    if request.method == 'POST':
-        spot_id = request.form.get('spot_id')
-        vehicle_number = request.form.get('vehicle_number')
-        lot_id = request.form.get('lot_id')
-        parking_time = request.form.get('parking_time')
-        release_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        price = getPriceParkingLot(lot_id)
-        
+    # Insert new reservation
+    insertReserveParkingSpot(spot_id, lot_id, user_id, vehicle_number)
 
-        if not spot_id or not vehicle_number or not lot_id or not parking_time or not price:
-            flash("Something went wrong","error")
-            return redirect(url_for('user.dashboard'))
-        
-        # Convert parking_time and release_time strings to datetime objects
-        parking_dt = datetime.datetime.strptime(parking_time, "%Y-%m-%d %H:%M")
-        release_dt = datetime.datetime.strptime(release_time, "%Y-%m-%d %H:%M")
-        hour_difference = (release_dt - parking_dt).total_seconds() // 3600  # Only hour difference
+    # Update spot status to Occupied
+    updateParkingSpotStatus(spot_id, lot_id, 'O')
 
-        print(hour_difference )
-        total_cost = price + hour_difference * price
+    # Update vehicle status to Parked
+    updateVehicleStatus(user_id, vehicle_number, 'P')
+
+    return jsonify({
+        "success": True,
+        "message": "Booking Successful!"
+    }), 200
 
 
-        return render_template("user/release_spot.html", 
-                              spot_id=spot_id, 
-                              vehicle_number=vehicle_number, 
-                              lot_id=lot_id, 
-                              parking_time=parking_time, 
-                              release_time=release_time, 
-                              total_cost=total_cost)
+@user.route("/api/user/releaseSpot", methods=["POST"])
+def release_spot_api():
 
-@user.route("/user/confirmSpotRelease", methods = ['GET','POST'])  
-def confirmSpotRelease():
+    data = request.get_json()
 
-    if request.method == 'POST':
-        spot_id = request.form.get("spot_id")
-        lot_id = request.form.get("lot_id")
-        user_id = session['user_id']
-        vehicle_number = request.form.get("vehicle_number")
+    spot_id = data.get("spot_id")
+    vehicle_number = data.get("vehicle_number")
+    lot_id = data.get("lot_id")
+    parking_time = data.get("parking_time")
+
+    if not (spot_id and vehicle_number and lot_id and parking_time):
+        return jsonify({"success": False, "message": "Missing fields"}), 400
+
+    release_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    price = getPriceParkingLot(lot_id)
+
+    # Calculate hours
+    parking_dt = datetime.datetime.strptime(parking_time, "%Y-%m-%d %H:%M")
+    release_dt = datetime.datetime.strptime(release_time, "%Y-%m-%d %H:%M")
+    hours = int((release_dt - parking_dt).total_seconds() // 3600)
+
+    total_cost = price + (hours * price)
+
+    return jsonify({
+        "success": True,
+        "spot_id": spot_id,
+        "vehicle_number": vehicle_number,
+        "lot_id": lot_id,
+        "parking_time": parking_time,
+        "release_time": release_time,
+        "total_cost": total_cost
+    }), 200
 
 
-        if not lot_id and not spot_id:
-            flash("Something went wrong","error")
-            return redirect(url_for('user.dashboard'))
+@user.route("/api/user/confirmRelease", methods=["POST"])
+def confirm_release_api():
 
-        updateParkingSpotStatus(spot_id, lot_id, 'A')
-        updateVehicleStatus(user_id, vehicle_number,'F')
+    data = request.get_json()
 
-        return redirect(url_for('user.dashboard'))
+    spot_id = data.get("spot_id")
+    lot_id = data.get("lot_id")
+    vehicle_number = data.get("vehicle_number")
+    user_id = session.get("user_id")
 
+    if not (spot_id and lot_id and vehicle_number):
+        return jsonify({"success": False, "message": "Missing fields"}), 400
 
+    updateParkingSpotStatus(spot_id, lot_id, 'A')
+    updateVehicleStatus(user_id, vehicle_number, 'F')
 
+    return jsonify({
+        "success": True,
+        "message": "Spot successfully released!"
+    })
